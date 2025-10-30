@@ -1,25 +1,24 @@
-# Use official lightweight Java image
-FROM openjdk:17-jdk-slim
-
-# Set working directory
+# ---------- Stage 1: Build ----------
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy Maven wrapper and project files
-COPY mvnw .
-COPY .mvn .mvn
+# Copy pom and download dependencies (for build cache)
 COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Download dependencies first (for caching)
-RUN ./mvnw dependency:go-offline
+# Copy source code and build the app
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy all project files
-COPY . .
+# ---------- Stage 2: Run ----------
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
 
-# Build the Spring Boot JAR
-RUN ./mvnw clean package -DskipTests
+# Copy JAR from build stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose Render’s port
+# Expose Render port
 EXPOSE 8080
 
-# Run the built JAR file
-CMD ["java", "-jar", "target/payrollmanagement-0.0.1-SNAPSHOT.jar"]
+# Run the JAR
+ENTRYPOINT ["java", "-jar", "app.jar"]
