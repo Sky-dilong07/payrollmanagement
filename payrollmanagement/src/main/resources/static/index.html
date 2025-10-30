@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payroll Management System</title>
+    <style>
+        body {
+          font-family: "Segoe UI", sans-serif;
+          background-color: #0a0a0f;
+          color: #e0e6f0;
+          margin: 0;
+          padding: 0;
+        }
+        header {
+          background: linear-gradient(90deg, #001f3f, #003366);
+          padding: 15px 30px;
+          text-align: center;
+          color: #fff;
+          font-size: 22px;
+          letter-spacing: 1px;
+        }
+        nav {
+          display: flex;
+          justify-content: center;
+          background: #001f3f;
+          padding: 10px;
+        }
+        nav button {
+          margin: 0 8px;
+          padding: 10px 18px;
+          background: #007bff;
+          border: none;
+          border-radius: 5px;
+          color: white;
+          cursor: pointer;
+          font-weight: 500;
+          transition: background 0.3s;
+        }
+        nav button:hover { background: #0056b3; }
+
+        section { display: none; padding: 30px; }
+        section.active { display: block; }
+
+        h2 {
+          text-align: center;
+          color: #66b3ff;
+          margin-bottom: 20px;
+        }
+
+        form, table {
+          margin: 20px auto;
+          max-width: 700px;
+          width: 90%;
+          background: #101727;
+          padding: 20px;
+          border-radius: 10px;
+          box-shadow: 0 0 10px rgba(0,0,0,0.4);
+        }
+        input, select {
+          width: 100%;
+          padding: 10px;
+          margin: 8px 0;
+          border-radius: 6px;
+          border: 1px solid #333;
+          background-color: #0d1220;
+          color: #fff;
+        }
+        button.action {
+          width: 100%;
+          background: #007bff;
+          border: none;
+          color: #fff;
+          padding: 10px;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 10px;
+        }
+        button.action:hover { background: #0056b3; }
+
+        table {
+          border-collapse: collapse;
+          text-align: left;
+          width: 90%;
+        }
+        th, td {
+          padding: 10px;
+          border-bottom: 1px solid #333;
+        }
+        th { color: #66b3ff; }
+        .success { color: #4caf50; text-align: center; }
+        .error { color: #ff4c4c; text-align: center; }
+    </style>
+</head>
+<body>
+<header>Payroll Management System</header>
+
+<nav>
+    <button onclick="showSection('employees')">Employees</button>
+    <button onclick="showSection('attendance')">Attendance</button>
+    <button onclick="showSection('payroll')">Payroll</button>
+</nav>
+
+<!-- EMPLOYEES SECTION -->
+<section id="employees" class="active">
+    <h2>Employee Management</h2>
+    <form id="employeeForm">
+        <input type="hidden" id="empId">
+        <label>Name:</label><input type="text" id="empName" required>
+        <label>Department:</label><input type="text" id="empDept" required>
+        <label>Email:</label><input type="email" id="empEmail" required>
+        <label>Salary:</label><input type="number" id="empSalary" required>
+        <button type="submit" class="action">Save Employee</button>
+    </form>
+    <p id="empMessage"></p>
+    <h3 style="text-align:center;color:#66b3ff;">Employee List</h3>
+    <table id="employeeTable">
+        <thead>
+        <tr><th>ID</th><th>Name</th><th>Dept</th><th>Email</th><th>Salary</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</section>
+
+<!-- ATTENDANCE SECTION -->
+<section id="attendance">
+    <h2>Attendance Management</h2>
+    <form id="attendanceForm">
+        <label>Employee ID:</label>
+        <input type="number" id="attEmployeeId" required>
+        <label>Status:</label>
+        <select id="attStatus">
+            <option value="Present">Present</option>
+            <option value="Absent">Absent</option>
+        </select>
+        <button type="submit" class="action">Mark Attendance</button>
+    </form>
+    <p id="attMessage"></p>
+    <h3 style="text-align:center;color:#66b3ff;">Attendance Records</h3>
+    <table id="attendanceTable">
+        <thead><tr><th>ID</th><th>Employee ID</th><th>Employee Name</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</section>
+
+<!-- PAYROLL SECTION -->
+<section id="payroll">
+    <h2>Payroll Management</h2>
+    <form id="payrollForm">
+        <label>Employee ID:</label>
+        <input type="number" id="payEmployeeId" required>
+        <button type="submit" class="action">Generate Payroll</button>
+    </form>
+    <p id="payMessage"></p>
+    <h3 style="text-align:center;color:#66b3ff;">Payroll Records</h3>
+    <table id="payrollTable">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee ID</th>
+            <th>Employee Name</th>
+            <th>Basic Salary</th>
+            <th>Bonus</th>
+            <th>Deductions</th>
+            <th>Net Pay</th>
+            <th>Pay Date</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</section>
+
+<script>
+    const API = "http://localhost:9090/api";
+
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      if (id === 'employees') loadEmployees();
+      if (id === 'attendance') loadAttendance();
+      if (id === 'payroll') loadPayroll();
+    }
+
+    /* ---------- EMPLOYEES ---------- */
+    async function loadEmployees() {
+      const res = await fetch(`${API}/employees`);
+      const data = await res.json();
+      const tbody = document.querySelector("#employeeTable tbody");
+      tbody.innerHTML = "";
+      data.forEach(emp => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${emp.id}</td>
+            <td>${emp.name}</td>
+            <td>${emp.department}</td>
+            <td>${emp.email}</td>
+            <td>${emp.salary}</td>
+            <td>
+              <button onclick="editEmp(${emp.id}, '${emp.name}', '${emp.department}', '${emp.email}', ${emp.salary})">✏️</button>
+              <button onclick="deleteEmp(${emp.id})">🗑️</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    document.getElementById("employeeForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = empId.value;
+      const employee = {
+        name: empName.value,
+        department: empDept.value,
+        email: empEmail.value,
+        salary: parseFloat(empSalary.value)
+      };
+      let url = `${API}/employees`;
+      let method = "POST";
+      if (id) { url += `/${id}`; method = "PUT"; }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(employee)
+      });
+      if (res.ok) {
+        empMessage.textContent = "✅ Employee saved successfully!";
+        empFormReset();
+        loadEmployees();
+      }
+    });
+
+    function editEmp(id, name, dept, email, salary) {
+      empId.value = id; empName.value = name; empDept.value = dept; empEmail.value = email; empSalary.value = salary;
+    }
+    async function deleteEmp(id) {
+      await fetch(`${API}/employees/${id}`, { method: "DELETE" });
+      loadEmployees();
+    }
+    function empFormReset() {
+      empId.value = empName.value = empDept.value = empEmail.value = empSalary.value = "";
+    }
+
+    /* ---------- ATTENDANCE ---------- */
+    async function loadAttendance() {
+      try {
+        const res = await fetch(`${API}/attendance`);
+        const data = await res.json();
+        const tbody = document.querySelector("#attendanceTable tbody");
+        tbody.innerHTML = "";
+        data.forEach(a => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${a.id}</td>
+              <td>${a.employeeId}</td>
+              <td>${a.employeeName}</td>
+              <td>${a.date || new Date().toISOString().split('T')[0]}</td>
+              <td>${a.status}</td>
+            </tr>`;
+        });
+      } catch {
+        document.getElementById("attMessage").textContent = "❌ Error fetching attendance records.";
+      }
+    }
+
+    document.getElementById("attendanceForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = attEmployeeId.value;
+      const status = attStatus.value;
+      const res = await fetch(`${API}/attendance/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        attMessage.textContent = "✅ Attendance marked successfully!";
+        loadAttendance();
+      } else attMessage.textContent = "❌ Failed to mark attendance.";
+    });
+
+    // render payroll table rows (maps backend DTOs safely)
+  async function loadPayroll() {
+    const tbody = document.querySelector("#payrollTable tbody");
+    tbody.innerHTML = '';
+    try {
+      const res = await fetch(`${API}/payroll`);
+      if (!res.ok) {
+        document.getElementById("payMessage").textContent = "❌ Error loading payrolls.";
+        return;
+      }
+      const data = await res.json();
+      data.forEach(p => {
+        // Backend currently returns: id, employeeId, employeeName, totalSalary, payDate
+        // We map fields to the UI columns: Basic Salary / Bonus / Deductions / Net Pay
+        const basic = p.basicSalary ?? p.baseSalary ?? p.totalSalary ?? '-';
+        // if only totalSalary available we'll show it under Net Pay for clarity
+        const net = p.netPay ?? p.totalSalary ?? '-';
+        const bonus = p.bonus ?? '-';
+        const deductions = p.deductions ?? '-';
+        const payDate = p.payDate ?? p.pay_date ?? '-';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.id ?? '-'}</td>
+            <td>${p.employeeId ?? '-'}</td>
+            <td>${p.employeeName ?? '-'}</td>
+            <td>${basic}</td>
+            <td>${bonus}</td>
+            <td>${deductions}</td>
+            <td>${net}</td>
+            <td>${payDate}</td>
+          </tr>
+        `;
+      });
+    } catch (err) {
+      console.error("loadPayroll error:", err);
+      document.getElementById("payMessage").textContent = "❌ Error loading payrolls.";
+    }
+  }
+
+  // new generate that first validates employee and existing payroll
+  async function generatePayrollForEmployee(employeeId) {
+    const payMessage = document.getElementById("payMessage");
+    payMessage.textContent = '';
+    if (!employeeId) {
+      payMessage.textContent = "⚠️ Enter an employee ID.";
+      return;
+    }
+
+    // 1) check employee exists
+    try {
+      const empRes = await fetch(`${API}/employees/${employeeId}`);
+      if (empRes.status === 404) {
+        payMessage.textContent = `❌ Employee with id ${employeeId} not found.`;
+        return;
+      }
+      if (!empRes.ok) {
+        const text = await empRes.text();
+        payMessage.textContent = `❌ Error checking employee: ${empRes.status} ${text}`;
+        return;
+      }
+    } catch (err) {
+      console.error("employee check error:", err);
+      payMessage.textContent = "❌ Error connecting to server when checking employee.";
+      return;
+    }
+
+    // 2) check if payroll already exists for this employee (prevents duplicate entry error)
+    try {
+      const prRes = await fetch(`${API}/payroll`);
+      if (!prRes.ok) {
+        // proceed cautiously: if we can't fetch payroll list, warn user but still attempt generate
+        console.warn("Couldn't fetch payroll list; will still try to generate.");
+      } else {
+        const payrolls = await prRes.json();
+        const exists = payrolls.some(p => Number(p.employeeId) === Number(employeeId));
+        if (exists) {
+          payMessage.innerHTML = `❌ Payroll already exists for employee id ${employeeId}. If you want to regenerate, remove the existing payroll from the DB or change backend to allow multiple payrolls.`;
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Error fetching payrolls (non-fatal):", err);
+    }
+
+    // 3) call generate endpoint
+    try {
+      const genRes = await fetch(`${API}/payroll/generate/${employeeId}`, { method: "POST" });
+      if (!genRes.ok) {
+        // try to parse JSON error body for better message
+        let bodyText = '';
+        try {
+          const body = await genRes.json();
+          bodyText = body.message ? `: ${body.message}` : `: ${JSON.stringify(body)}`;
+        } catch (e) {
+          bodyText = `: ${await genRes.text()}`;
+        }
+        payMessage.textContent = `❌ Failed to generate payroll (HTTP ${genRes.status})${bodyText}`;
+        return;
+      }
+
+      const payrollDto = await genRes.json();
+      // success - show what we received
+      payMessage.textContent = "✅ Payroll generated successfully!";
+      // update table (map received DTO safely)
+      await loadPayroll();
+    } catch (err) {
+      console.error("generatePayroll error:", err);
+      payMessage.textContent = "❌ Error while generating payroll. See console for details.";
+    }
+  }
+
+  // wire form submit (if you have a form with id payrollForm)
+  const payrollForm = document.getElementById("payrollForm");
+  if (payrollForm) {
+    payrollForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const idVal = document.getElementById("payEmployeeId").value;
+      generatePayrollForEmployee(idVal);
+    });
+  }
+
+  // call loadPayroll when payroll section opens or initial page load
+  // (if you have showSection functionality, make sure it calls loadPayroll)
+  // initial load:
+  loadPayroll();
+</script>
+</body>
+</html>
